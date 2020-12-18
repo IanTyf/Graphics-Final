@@ -1,0 +1,1695 @@
+<script src=lib12.js></script>
+<script src=matrix.js></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<style type="text/css">
+   li {
+      padding-right: 1em;
+   }
+</style>
+
+<body bgcolor=grey text=white link=white alink=white vlink=white>
+<center>
+   <table>
+      <tr>
+         <td valign=top>
+         <canvas id='canvas1' width=600 height=600 style="background-color: darkgrey"></canvas>
+         </td>
+         <td valign=top style="padding-left: 5em">
+         <!! ----------------------------- SLIDERS ----------------------------->
+   
+         <h3>Tools:</h3>
+         <div>
+            <button id=attachBtn style="background-color: dimgrey;width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">ATTACH</button>
+            <button id=removeBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">REMOVE</button>
+            <button id=paintBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">BRUSH</button>
+            <button id=eyeDropperBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">EYE<br>DROPPER</button>
+            <button id=moveBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">MOVE</button>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;vertical-align: middle;">
+               Ctrl+Scroll to Scale Selected Layer
+            </div>
+         </div>
+         <div style="letter-spacing: 79px; margin-left: 35px;">
+            <span>ARBEM</span>
+         </div>
+         <br>
+         <div>
+            <label for="brushColor">Color&nbsp;&nbsp;</label>
+            <input type="color" name="color" id="brushColor" style="width: 150px;height: 30px" value="#ffffff">
+         </div>
+         <br>
+
+         <div>
+            <input type="button" value="UNDO" id=undoBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">
+            <input type="button" value="REDO" id=redoBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">
+
+            <button id=gridBtn style="background-color: dimgrey;width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">DISPLAY<br>GRID</button>
+            <button id=resetBtn style="width: 80px; height: 80px; margin-right: 5px;vertical-align: middle;">RESET<br>CAMERA</button>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;vertical-align: middle;">
+               Mouse1(R) to Rotate Scene
+            </div>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;vertical-align: middle;">
+               Mouse2(M) to Move Camera
+            </div>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;vertical-align: middle;">
+               Scroll to Zoom In/Out
+            </div>
+         </div>
+         <div style="display: inline-block;">
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;">
+               Ctrl+Z
+            </div>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;">
+               Ctrl+Y
+            </div>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;">
+               TAB
+            </div>
+            <div style="display: inline-block; width: 80px; margin-right: 5px; text-align: center;">
+               SPACE
+            </div>
+
+         </div>
+
+         <hr>
+         <div >
+            <div style="max-height: 200px;">
+               <h3>Layers</h3>
+               <ul class="layers" id="layers" style="list-style: none;display: inline-grid;grid-template-rows: repeat(4, auto);grid-auto-flow: column;margin-top: -10px;">
+                  <li>
+                     <input type="checkbox" class="checkbox" checked>
+                     <span></span>
+                     <input type="button" value="LAYER 1" id='layer1' style="background-color: dimgrey">
+                  </li>  
+               </ul>
+               <br>
+               <div>
+                  <input type="checkbox" value="ALL" id="selectAllBtn" checked>
+                  <label for="selectAllBtn">Select/Deselect All</label>
+               </div>
+            </div>
+
+            <div>
+               <h4>Create Layer</h4>
+               <div>
+                  <div style="display: inline-block;vertical-align: middle;">
+                     <div>
+                        <label for="nameInput">Name:&nbsp;&nbsp;</label>
+                        <input type="text" value="New Layer" id="nameInput" style="width: 100px"> 
+                     </div>
+                     <div>
+                        <label for="dimInput">Size:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                        <input type="text" value="10" id="dimInput" style="width: 24px">   
+                     </div>
+                  </div>
+                  <div style="display: inline-block;">
+                     <button id=addLayerBtn style="width: 80px; height: 50px; margin-left: 5px;vertical-align: middle;">ADD<br>LAYER</button>
+                     <button id=duplicateBtn style="width: 90px; height: 50px; margin-left: 5px;vertical-align: middle;">DUPLICATE<br>CURRENT<br>LAYER</button>
+                  </div>
+               </div>
+            </div>
+         </div>
+
+         <!! ------------------------------------------------------------------->
+         </td>
+      </tr>
+   </table>
+</center>
+
+</body>
+
+
+
+<!!-------- VERTEX SHADER -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   attribute vec3 aPos, aNor;
+   attribute vec2 aUV;
+   uniform   mat4 uMatrix, uIMatrix, uCamera;
+   varying   vec3 vPos, vNor, vAPos, vANor;
+   varying   vec2 vUV;
+
+   // TO ANIMATE EACH VERTEX, TRANSFORM BY UNIFORM VARIABLE uMatrix.
+
+   void main() {
+      vec4 pos = uMatrix * vec4(aPos, 1.);
+      vec4 nor = vec4(aNor, 0.) * uIMatrix;
+      vPos = pos.xyz;
+      vNor = nor.xyz;
+      vAPos = aPos;
+      vANor = aNor;
+      vUV   = aUV;
+      gl_Position = (uCamera * pos) * vec4(1.,1.,0.1,1.);
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+   const int nl = 2;
+
+   uniform float uTime;
+
+   uniform vec3 uLDir[nl];
+   uniform vec3 uLCol[nl];
+
+   uniform mat4 uPhong[2];
+
+   varying vec3 vPos, vNor, vAPos, vANor;
+   varying vec2 vUV;
+
+   void main() {
+
+    // NORMALIZE SURFACE NORMAL VECTOR
+
+    vec3 N = normalize(vNor);
+
+    // DO PHONG SHADING
+
+    vec3 ambient = uPhong[0][0].xyz;
+    vec3 diffuse = uPhong[0][1].xyz;
+    vec3 specular = uPhong[0][2].xyz;
+    float p = uPhong[0][2].w;
+
+    vec3 color = ambient;
+    for (int i = 0 ; i < nl ; i++) {
+       color += diffuse * uLCol[i] * max(0., dot(N, uLDir[i]));
+       vec3 R = 2. * N * dot(N, uLDir[i]) - uLDir[i];
+       color += specular * uLCol[i] * pow(max(0., dot(N, R)), p);
+    }
+
+    // ADD PROCEDURAL TEXTURE: A CHECKERBOARD PATTERN
+
+    //color *= .5 + .5 * sin(30. * vUV.x) * sin(30. * vUV.y);
+
+    gl_FragColor = vec4(sqrt(color), uPhong[0][0].a);
+   }
+</script>
+
+
+<!!-------- CREATE A PROPERLY DESCRIPTIVE TITLE BELOW -------->
+
+<script id='my_title' type='text/html'>
+Final Project
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+
+</script>
+
+
+<!!-------- YOU PROBABLY DON'T WANT TO CHANGE ANYTHING BELOW FOR NOW -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#ffffff>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=0 cellpadding=0 style="width:100%">'
+   ,'<tr>'
+   
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   /*
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea></td>'
+   */
+   ,'<td>'+document.body.innerHTML+'</td>'
+   //,'<td valign=top><font size=5>' + ui.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+/*
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+*/
+
+// SET THE CURRENT TIME IN SECONDS BEFORE RENDERING EACH FRAME.
+
+let startTime = Date.now();
+
+
+////////////////// CREATE MESH SHAPES //////////////////
+
+// ADD TWO NEW VALUES TO EACH VERTEX FOR u,v ATTRIBUTE
+
+const VERTEX_SIZE = 8;       // x,y,z, nx,ny,nz, u,v
+
+// CREATE A PARAMETRIC MESH
+
+let createMesh = (nu, nv, uvToShape, info) => {
+   let tmp = [];
+   for (let j = 0 ; j < nv ; j++)
+   for (let i = 0 ; i <= nu ; i++) {
+      tmp = tmp.concat(uvToShape(i/nu,  j   /nv, info));
+      tmp = tmp.concat(uvToShape(i/nu, (j+1)/nv, info));
+   }
+   return new Float32Array(tmp);
+}
+
+
+// GLUE TOGETHER TWO MESHES
+
+let glueTwoMeshes = (a, b) => {
+   let vs = VERTEX_SIZE;
+
+   let c = new Float32Array(a.length + 2 * vs + b.length);
+   let nc = 0;
+
+   let append = (a, i, n) => {
+      for (let j = 0 ; j < n ; j++)
+         c[nc++] = a[i + j];
+   }
+
+   append(a, 0, a.length);
+   append(a, a.length - vs, vs);
+   append(b, 0, vs);
+   append(b, 0, b.length);
+
+   return c;
+}
+
+
+// GLUE TOGETHER AN ARRAY OF MESHES
+
+let glueMeshes = meshes => {
+   let mesh = meshes[0];
+   for (let i = 1 ; i < meshes.length ; i++)
+      mesh = glueTwoMeshes(mesh, meshes[i]);
+   return mesh;
+}
+
+
+// SQUARE MESH
+
+let uvToSquare = (u,v,info) => {
+   let k = 2, z = 0, s = 1;
+
+   if (info) {
+      k = info[0];
+      s = info[1];
+      z = s;
+   }
+
+   let i = (k + 1) % 3;
+   let j = (k + 2) % 3;
+
+   let vertex = [];
+
+   vertex[i] = 2*u-1;
+   vertex[j] = 2*v-1;
+   vertex[k] = z;
+
+   vertex[3 + i] = 0;
+   vertex[3 + j] = 0;
+   vertex[3 + k] = s;
+
+   vertex[6] = u; // ADDED u,v
+   vertex[7] = v;
+
+   return vertex;
+}
+let squareMesh = createMesh(1, 1, uvToSquare);
+
+// CUBE MESH: GLUE TOGETHER SIX SQUARE MESHES
+
+let cubeMesh = glueMeshes([
+   createMesh(1,1, uvToSquare, [0,-1]),
+   createMesh(1,1, uvToSquare, [0, 1]),
+   createMesh(1,1, uvToSquare, [1,-1]),
+   createMesh(1,1, uvToSquare, [1, 1]),
+   createMesh(1,1, uvToSquare, [2,-1]),
+   createMesh(1,1, uvToSquare, [2, 1]),
+]);
+
+
+// TUBE MESH
+
+let uvToTube = (u,v) => {
+   let theta = 2 * Math.PI * u;
+   let c = Math.cos(theta);
+   let s = Math.sin(theta);
+   return [ c,s,2*v-1, c,s,0, u,v ]; // ADDED u,v
+}
+let tubeMesh = createMesh(32, 1, uvToTube);
+
+
+// DISK MESH
+
+let uvToDisk = (u,v,info) => {
+   let z = 0, nz = 1;
+
+   if (info) {
+      z = info[0];
+      nz = info[1];
+   }
+
+   let theta = 2 * Math.PI * u;
+   let c = Math.cos(theta);
+   let s = Math.sin(theta);
+   return [ v*c, v*s, z,   0,0,nz,   u,v ]; // ADDED u,v
+}
+let diskMesh = createMesh(32, 1, uvToDisk);
+
+
+// CYLINDER MESH: GLUE TOGETHER A TUBE AND TWO DISKS
+
+let createCylinderMesh = nu => {
+   return glueMeshes([
+      createMesh(nu, 1, uvToDisk, [-1,-1]),
+      createMesh(nu, 1, uvToTube),
+      createMesh(nu, 1, uvToDisk, [1,1])
+   ]);
+}
+let cylinderMesh = createCylinderMesh(8);
+
+
+// SPHERE MESH
+
+let uvToSphere = (u,v) => {
+   let phi = Math.PI * (v - .5);
+   let theta = 2 * Math.PI * u;
+   let x = Math.cos(phi) * Math.cos(theta);
+   let y = Math.cos(phi) * Math.sin(theta);
+   let z = Math.sin(phi);
+   return [ x,y,z,  x,y,z,  u,v ]; // ADDED u,v
+}
+let sphereMesh = createMesh(32, 16, uvToSphere);
+
+
+// LATHE MESH
+
+let epsilon = 0.001;
+
+let uvToLathe = (u,v,info) => {
+   let theta = 2 * Math.PI * u;
+   let z0 = evalCatmullRomSpline(v-epsilon/2, info[0]);
+   let z1 = evalCatmullRomSpline(v+epsilon/2, info[0]);
+   let r0 = evalCatmullRomSpline(v-epsilon/2, info[1]);
+   let r1 = evalCatmullRomSpline(v+epsilon/2, info[1]);
+   let x = r0 * Math.cos(theta);
+   let y = r0 * Math.sin(theta);
+   let N = normalize([x,y,(r0-r1)/(z1-z0)]);
+   return [x,y,z0,  N[0],N[1],N[2],  u,v ]; // ADDED u,v
+}
+
+
+
+////////////////// SUPPORT FOR ANIMATION SEQUENCING.
+
+let defaultTransitionTime = 1;
+let A = [];
+
+/*********** FIRST VERSION
+let addToA = (time, transitionTime) => {
+   A.push({time: time, transitionTime: transitionTime});
+}
+let evalA = (i, t) => {
+   let time = A[i].time;
+   let transitionTime = A[i].transitionTime;
+   if (transitionTime === undefined)
+      transitionTime = defaultTransitionTime;
+   if (t < time) return 0;
+   if (t > time + transitionTime) return 1;
+   return sCurve((t - time) / transitionTime);
+}
+***********/
+
+let addToA = (t0, t1, tt0, tt1) => {
+   if (t1 === undefined)
+      t1 = 10000000;
+   if (tt0 === undefined)
+      tt0 = 1;
+   if (tt1 === undefined)
+      tt1 = tt0;
+
+   A.push({t0 : t0,
+           t1 : t1,
+           tt0: tt0,
+           tt1: tt1
+   });
+}
+
+let evalA = (i, t) => {
+   let t0  = A[i].t0;
+   let t1  = A[i].t1;
+   let tt0 = A[i].tt0;
+   let tt1 = A[i].tt1;
+
+   if (t < t0 || t > t1 + tt1)
+      return 0;
+   if (t > t0 + tt0 && t < t1)
+      return 1;
+   if (t > t0 && t < t0 + tt0)
+      return sCurve((t - t0) / tt0);
+   return 1 - sCurve((t - t1) / tt1);
+}
+
+//addToA(0);
+
+
+////////////////// RESPOND TO MOUSE EVENTS.
+
+let isDown = false, mouseX = 0, mouseY = 0, isRotating = false; isMoving = false;
+let clickFrame = false;
+let clickPos = [-1,-1,-1];
+let releaseFrame = false;
+
+canvas1.onPress = (x, y, btn) => {
+   if (btn === 0) {
+      isDown = true;
+      clickFrame = true;
+   }
+   else if (btn === 2) {
+      isRotating = true;
+   }
+   else if (btn === 1) {
+      isMoving = true;
+   }
+   //console.log(btn);
+   
+}
+
+canvas1.onDrag = (x, y) => {
+   mouseX = x;
+   mouseY = y;
+}
+
+canvas1.onRelease = (x, y, btn) => {
+   if (btn === 0) {
+      //isDown = false; this is done when handling releaseFrame in hittesting
+      //isRotating = false;
+      clickFrame = false;
+      //clickPos = [-1,-1,-1]; this is done when handling releaseFrame in hittesting
+      releaseFrame = true;
+      //mouseInvisBlock = [-1,-1,-1]; this is done when handling releaseFrame in hittesting
+   }
+   else if (btn === 2) {
+      isRotating = false;
+   }
+   else if (btn === 1) {
+      isMoving = false;
+   }
+}
+
+canvas1.onMove = (x, y) => {
+   mouseX = x;
+   mouseY = y;
+}
+
+////////////////// MAIN ANIMATE-FRAME CALLBACK
+
+let time = 0, now = Date.now(), nowX = 0, nowY = 0, varyX = 0, varyZ = 0;
+
+let fl = 3; // FOCAL LENGTH OF CAMERA
+
+
+// The general parameters for overall scene (fixed across objects)
+let tool = 'attach';
+let color = [1,1,1];
+let scaling = 1;
+let transformation = [.05,.05,.05];
+let showGrid = true;
+let moveDir = '';
+let moveMat = [];
+
+// The different objects
+let objects = [];
+let currentObjIndex = 0;
+
+// The render order, in the form of [ [index, shouldRender], ...  ]
+let renderOrder = [ [1, true] ];
+
+function updateRenderOrder() {
+   let newOrder = [];
+   let layers = document.querySelector('.layers');
+   let children = layers.children;
+   for (let i=0; i<children.length; i++) {
+      let tmpp = [];
+      tmpp[0] = parseInt(children[i].children[2].id.slice(5));
+      tmpp[1] = children[i].children[0].checked;
+      newOrder.push(tmpp);
+   }
+   console.log(newOrder);
+   renderOrder = newOrder;
+}
+
+function addNewObject(dim) {
+   let newBlockMatrix = initializeBlockMatrix(dim);
+   let newHistory = [];
+   let newHistoryPointer = 0;
+   let newTranslation = [0,0,0];
+   let newLocalScaling = 1;
+   let newObj = {
+      blockMatrix: newBlockMatrix,
+      history: newHistory,
+      historyPointer: newHistoryPointer,
+      translation: newTranslation,
+      localScaling: newLocalScaling
+   };
+   pushToHistory(newObj.history, newObj.blockMatrix);
+   objects.push(newObj);
+}
+addNewObject(10);
+
+//let dim = 10;
+function initializeBlockMatrix(dim) {
+   let mat = [];
+   for (let x=0; x<dim; x++) {
+      let plane = [];
+      for (let y=0; y<dim; y++) {
+         let row = [];
+         for (let z=0; z<dim; z++) {
+            row.push({pos: [2*x-dim,2*y-dim,2*z-dim],
+                      exist: false,
+                      color: color});
+         }
+         plane.push(row);
+      }
+      mat.push(plane);
+   }
+   return mat;
+}
+
+function deepCopy(m) {
+   let mat = [];
+   let dim = m.length;
+   for (let x=0; x<dim; x++) {
+      let plane = [];
+      for (let y=0; y<dim; y++) {
+         let row = [];
+         for (let z=0; z<dim; z++) {
+            row.push({pos: m[x][y][z].pos.slice(),
+                     exist: m[x][y][z].exist,
+                     color: m[x][y][z].color.slice()})
+         }
+         plane.push(row);
+      }
+      mat.push(plane);
+   }
+   return mat;
+}
+
+function pushToHistory(hist, bm) {
+   let mat = deepCopy(bm);
+   hist.push(mat);
+}
+function deleteBeyondPointer(hist, histPointer) {
+   let len = hist.length;
+   for (let i=len-1; i>=histPointer; i--) {
+      hist.pop();
+   }
+   return hist;
+}
+
+/*
+let blockMatrix = initializeBlockMatrix(dim);
+let history = [];
+let historyPointer = 0;
+pushToHistory(history, blockMatrix);
+*/
+let currentObj, blockMatrix, history, historyPointer, dim, translation, localScaling;
+
+let mouseInvisBlock = [-1,-1,-1]; // will be 0 to dim-1 for x,y,z if mouse is not hitting existing blocks
+
+//temp vars
+//let translation = [0,0,0];
+
+function animate(gl) {
+   //console.log(time);
+   // The main object we are rendering and editing
+   currentObj = objects[currentObjIndex];
+   blockMatrix = currentObj.blockMatrix;
+   history = currentObj.history;
+   historyPointer = currentObj.historyPointer;
+   dim = currentObj.blockMatrix.length;
+   translation = currentObj.translation;
+   localScaling = currentObj.localScaling;
+
+   time += (Date.now() - now) / 1000;
+   if (isRotating) {
+      varyX += mouseX - nowX;
+      varyZ -= mouseY - nowY;
+   }
+   if (isMoving) {
+      transformation[0] += mouseX - nowX;
+      transformation[1] += mouseY - nowY;
+   }
+
+   if (moveDir !== '') {
+      let oldLocalPos = matrixTransform(moveMat, [nowX, nowY, 0, 1]);
+      let newLocalPos = matrixTransform(moveMat, [mouseX, mouseY, 0, 1]);
+      let movement = subtract(newLocalPos, oldLocalPos);
+      if (moveDir === 'x') {
+         translation[0] += movement[0]*200/scaling/localScaling;
+      }
+      else if (moveDir === 'xt') {
+         translation[0] += movement[0]*200*dim*2/scaling/localScaling;
+      }
+      else if (moveDir === 'y') {
+         translation[1] += movement[1]*200/scaling/localScaling;
+      }
+      else if (moveDir === 'yt') {
+         translation[1] += movement[1]*200*dim*2/scaling/localScaling;
+      }
+      else if (moveDir === 'z') {
+         translation[2] -= movement[2]*4000/scaling/localScaling;
+      }
+      else if (moveDir === 'zt') {
+         translation[2] -= movement[2]*200*dim*2/scaling/localScaling;
+      }
+      //console.log(moveMat);
+      //console.log(translation);
+   }
+
+
+   now  = Date.now();
+   nowX = mouseX;
+   nowY = mouseY;
+
+   setUniform('1f', 'uTime', time);
+
+
+   // EACH LIGHT DIRECTION VECTOR MUST BE UNIT LENGTH.
+
+   let L0 = normalize([1,1,1]);
+   let L1 = normalize([-1,-1,-1]);
+
+   setUniform('3fv', 'uLDir', L0.concat(L1));
+
+   setUniform('3fv', 'uLCol', [ .6,.8,1,      .5,.4,.3 ] );
+
+   // USED red,grn,blu SLIDER VALUES TO CONTROL OBJECT COLOR.
+
+   setColor([1,1,1]);
+
+   // ANIMATE RAY TRACED OBJECTS IN THE FRAGMENT SHADER.
+
+   let x = .7 * Math.cos(time);
+   let z = .7 * Math.sin(time);
+   setUniform('4fv', 'uSph', [ 0,0,0,.4,
+                               x,0,z,.2 ] );
+
+
+// ADD PERSPECTIVE TO THE VIEW
+
+//  Perspective matrix to transform ( px, py, pz ):
+//
+//  x        1 0 0 0   px
+//  y  /---  0 1 0 0   py
+//  z  \---  0 0 1 0   pz
+//  w        X Y Z 1   1
+//
+//  Resulting point in space is: ( x/w, y/w, z/w )
+
+   setUniform('Matrix4fv', 'uCamera', false, [
+      1,0,0,0, 0,1,0,0, 0,0,-1,-1/fl, 0,0,0,1
+   ]);
+
+
+   ////////////////// DRAW THE SCENE ///////////////////
+
+   //let a1 = evalA(1, time);
+/*
+   let a3 = evalA(3, time);
+   ....
+*/
+   mIdentity();
+   mSave();
+   mTranslate(transformation); // the camera
+   mRotateX(Math.PI * varyZ);
+   mRotateY(Math.PI * varyX);
+
+   let cheese = true;
+   // Render the other objects that are said to be visible by renderOrder
+   for (let i=renderOrder.length-1; i>=0; i--) {
+      if (renderOrder[i][1]) {
+         cheese = false;
+         let index = renderOrder[i][0] - 1;
+         if (index !== currentObjIndex) {
+            // render as ignore
+            let bm = objects[index].blockMatrix;
+            for (let x=0; x<bm.length; x++) {
+               for (let y=0; y<bm.length; y++) {
+                  for (let z=0; z<bm.length; z++) {
+                     let blk = bm[x][y][z];
+                     if (blk.exist) {
+                        mSave();
+                           //mScale(.05, .05, .05);
+                           //mScale(scaling);
+                           //mTranslate(objects[index].translation); // the movement in world space
+                           mScale(.05, .05, .05);
+                           mScale(scaling);
+                           mScale(objects[index].localScaling);
+                           mTranslate(objects[index].translation); // the movement in world space
+
+                           mTranslate(blk.pos);
+                           //mScale(Math.random());
+                           drawMesh(cubeMesh, blk.color, 'ignore');
+                        mRestore();
+                     }
+                  }
+               }
+            }
+         }
+         else {
+            mSave();
+               //mTranslate(translation); // the movement in world space
+               mScale(.05, .05, .05);
+               mScale(scaling);
+               mScale(localScaling);
+               mTranslate(translation); // the movement in world space
+               if (showGrid) {
+                  // the border/dimension indicator
+                  mSave();
+                     
+                     for (let i=-dim-1; i<=dim-1; i+=2*dim) {
+                        for (let j=-dim-1; j<=dim-1; j+=2*dim) {
+                           mSave();
+                           mTranslate(i, -1, j);
+                           mScale(0.03, dim, 0.03);
+                           drawMesh(cubeMesh, [0,0,.5], 'ignore');
+                           mRestore();
+
+                           mSave();
+                           mTranslate(-1, i, j);
+                           mScale(dim, 0.03, 0.03);
+                           drawMesh(cubeMesh, [0,0,.5], 'ignore');
+                           mRestore();
+
+                           mSave();
+                           mTranslate(i, j, -1);
+                           mScale(0.03, 0.03, dim);
+                           drawMesh(cubeMesh, [0,0,.5], 'ignore');
+                           mRestore();
+                        }
+                     }
+                  mRestore();
+               }
+
+               if (tool === 'move') {
+                  mSave();
+                  mTranslate(-1,-1,-1);
+                     mSave();
+                        mSave();
+                           mScale([dim,0.05+0.005*dim,0.05+0.005*dim]);
+                           mTranslate([1,0,0]);
+                           drawMesh(cubeMesh, [1,0,0], 'moveX');
+                        mRestore();
+                        mSave();
+                           mScale(.5,.5,.5);
+                           mTranslate([dim*4,0,0]);
+                           drawMesh(cubeMesh, [1,0,0], 'moveXT');
+                        mRestore();
+                     mRestore();
+                     mSave();
+                        mSave();
+                           mScale([0.05+0.005*dim,dim,0.05+0.005*dim]);
+                           mTranslate([0,1,0]);
+                           drawMesh(cubeMesh, [0,1,0], 'moveY');
+                        mRestore();
+                        mSave();
+                           mScale(.5,.5,.5);
+                           mTranslate([0,dim*4,0]);
+                           drawMesh(cubeMesh, [0,1,0], 'moveYT');
+                        mRestore();
+                     mRestore();
+                     mSave();
+                        mSave();
+                           mScale([0.05+0.005*dim,0.05+0.005*dim,dim]);
+                           mTranslate([0,0,1]);
+                           drawMesh(cubeMesh, [0,0,1], 'moveZ');
+                        mRestore();
+                        mSave();
+                           mScale(.5,.5,.5);
+                           mTranslate([0,0,dim*4]);
+                           drawMesh(cubeMesh, [0,0,1], 'moveZT');
+                        mRestore();
+                     mRestore();
+                  mRestore();
+               }
+
+               for (let x=0; x<dim; x++) {
+                  for (let y=0; y<dim; y++) {
+                     for (let z=0; z<dim; z++) {
+                        let blk = blockMatrix[x][y][z];
+                        if (blk.exist) {
+                           mSave();
+                              //mScale(.05, .05, .05);
+                              //mScale(scaling);
+
+                              mTranslate(blk.pos);
+                              //mScale(Math.random());
+                              if (tool === 'move') {
+                                 drawMesh(cubeMesh, blockMatrix[x][y][z].color, 'ignore');
+                              }
+                              else drawMesh(cubeMesh, blockMatrix[x][y][z].color, [x,y,z]);
+                           mRestore();
+                        }
+                     }
+                  }
+               }
+            mRestore();
+         }
+
+      }
+   }
+   // Fix the issue where if nothing should be rendered, the scene won't refresh
+   if (cheese) {
+      mTranslate(-10,-10,0);
+      drawMesh(cubeMesh, [0,0,0], 'ignore');
+   }
+
+   mRestore();
+}
+
+function hitTesting() {
+   let ray = {
+      V: [0,0,fl],
+      W: normalize([mouseX, mouseY, -fl])
+   };
+
+   let transformRay = (ray, M) => {
+      return {
+         V:           matrixTransform(M, ray.V.concat([1])).slice(0,3),
+         W: normalize(matrixTransform(M, ray.W.concat([0])).slice(0,3))
+      };
+   }
+
+   // YOU CAN IMPLEMENT DIFFERENT SHAPES HERE
+
+   let rayTraceToUnitSphere = ray => {
+      let B = dot(ray.V, ray.W);
+      let C = dot(ray.V, ray.V) - 1;
+      return B * B > C ? -B - Math.sqrt(B * B - C) : -1;
+   }
+
+   let rayTraceToUnitCube = ray => {
+      let tx1 = (-1-ray.V[0]) / ray.W[0];
+      let tx2 = (1-ray.V[0]) / ray.W[0];
+      let ty1 = (-1-ray.V[1]) / ray.W[1];
+      let ty2 = (1-ray.V[1]) / ray.W[1];
+      let tz1 = (-1-ray.V[2]) / ray.W[2];
+      let tz2 = (1-ray.V[2]) / ray.W[2];
+      let inMax = Math.max(Math.min(tx1,tx2), Math.min(ty1,ty2), Math.min(tz1,tz2));
+      let outMin = Math.min(Math.max(tx1,tx2), Math.max(ty1,ty2), Math.max(tz1,tz2));
+      if (inMax >= outMin) return -1;
+      let side = [];
+      if (inMax === tx1) side = [-1,0,0];
+      if (inMax === tx2) side = [1,0,0];
+      if (inMax === ty1) side = [0,-1,0];
+      if (inMax === ty2) side = [0,1,0];
+      if (inMax === tz1) side = [0,0,-1];
+      if (inMax === tz2) side = [0,0,1];
+      return [inMax, side];
+      //return inMax < outMin ? inMax : -1;
+   }
+
+   let hitCheck = (ray, mesh, matrix) => {
+      let t = -1;
+      let objectRay = transformRay(ray, matrixInverse(matrix));
+      let tmp = [];
+
+      switch (mesh) {
+         case cubeMesh: tmp = rayTraceToUnitCube(objectRay); t = tmp[0]; break;
+         default              : t = rayTraceToUnitSphere(objectRay); break;
+      }
+
+      let unitP = [objectRay.V[0] + t * objectRay.W[0], objectRay.V[1] + t * objectRay.W[1], objectRay.V[2] + t * objectRay.W[2]];
+      let worldZ = matrixTransform(matrix, unitP.concat([1]))[2];
+      return t;
+   }
+
+/*
+   let rayTraceToUnitCube = ray => {
+      ...
+   }
+
+   let rayTraceToUnitCylinder = ray => {
+      ...
+   }
+*/
+
+
+   hitIndex = -1;
+   let hitZ = -1;
+   let T = 1000000, t = -1;
+   let side = '';
+   for (let i = 0 ; i < drawArray.length ; i++) {
+      let mesh   = drawArray[i].mesh,
+          matrix = drawArray[i].matrix,
+          rgb    = drawArray[i].rgb;
+
+      if (drawArray[i].pos === 'ignore') continue;
+
+      let objectRay = transformRay(ray, matrixInverse(matrix));
+      let tmp = [];
+
+      switch (mesh) {
+      case cubeMesh: tmp = rayTraceToUnitCube(objectRay); t = tmp[0]; break;
+      default              : t = rayTraceToUnitSphere(objectRay); break;
+      }
+      //console.log('hit object mat:', matrix);
+      //if (t >= 0) //console.log(t);
+      /*
+      if (t >= 0) {
+         let newP = [objectRay.V[0] + t * objectRay.W[0], objectRay.V[1] + t * objectRay.W[1], objectRay.V[2] + t * objectRay.W[2]];
+         let newHitZ = matrixTransform(matrix, newP.concat([1]))[2];
+         if (newHitZ > hitZ) {
+            hitZ = newHitZ
+            T = t;
+   	      hitIndex = i;
+            side = tmp[1];
+         }
+      }
+      */
+      
+      if (t >= 0 && t < T) {
+         T = t;
+         hitIndex = i;
+         side = tmp[1];
+      }
+      
+   }
+   
+   // if hit the 
+
+   // if did not hit anything, try to see if hit a wall
+   if (hitIndex === -1 && tool !== 'move') {
+      let tempT = -1;
+      let rendPos = [];
+      let rendScale = [];
+      let blkPosInMat = [];
+      let thisT;
+      let tCount = 0;
+      mIdentity();
+      mTranslate(transformation);
+      mRotateX(Math.PI * varyZ);
+      mRotateY(Math.PI * varyX);
+      mScale(.05, .05, .05);
+      mScale(scaling);
+      mScale(localScaling);
+      mTranslate(translation); // the movement in world space
+      // first check all the walls
+      //let foundOne = false;
+      for (let x=0; x<dim; x++) {
+         for (let y=0; y<dim; y++) {
+            mSave();
+               //mScale(.05);
+               //mScale(scaling);
+               mTranslate(2*x-dim, 2*y - dim, dim-2);
+               mScale(1, 1, 1);
+               //drawMesh(cubeMesh, [0,0,1]);
+               thisT = hitCheck(ray, cubeMesh, m[mTop]);
+               //console.log('this T:', thisT);
+               if (thisT > 0) {
+                  //console.log(thisT);
+                  tCount++;
+                  //console.log(m[mTop]);
+                  if (thisT > tempT) {
+                     tempT = thisT;
+                     rendPos = [2*x-dim, 2*y - dim, dim-1];
+                     rendScale = [1,1,0.001];
+                     blkPosInMat = [x, y, dim-1];
+                  }
+               }
+            mRestore();
+            mSave();
+               //mScale(.05);
+               //mScale(scaling);
+               mTranslate(2*x-dim, 2*y - dim, -dim);
+               mScale(1, 1, 1);
+               //drawMesh(cubeMesh, [0,0,1]);
+               thisT = hitCheck(ray, cubeMesh, m[mTop]);
+               //console.log('this T:', thisT);
+               if (thisT > 0) {
+                  //console.log(thisT);
+                  tCount++;
+                  if (thisT > tempT) {
+                     tempT = thisT;
+                     rendPos = [2*x-dim, 2*y - dim, -dim-1];
+                     rendScale = [1,1,0.001];
+                     blkPosInMat = [x,y,0];
+                  }
+               }
+            mRestore();
+         }
+      }
+      for (let x=0; x<dim; x++) {
+         for (let z=0; z<dim; z++) {
+            mSave();
+               //mScale(.05);
+               //mScale(scaling);
+               mTranslate(2*x-dim, dim-2, 2*z-dim);
+               mScale(1, 1, 1);
+               //drawMesh(cubeMesh, [0,0,1]);
+               thisT = hitCheck(ray, cubeMesh, m[mTop]);
+               //console.log('this T:', thisT);
+               if (thisT > 0) {
+                  //console.log(thisT);
+                  tCount++;
+                  if (thisT > tempT) {
+                     tempT = thisT;
+                     rendPos = [2*x-dim, dim-1, 2*z-dim];
+                     rendScale = [1,0.001,1];
+                     blkPosInMat = [x, dim-1, z];
+                  }
+               }
+            mRestore();
+            mSave();
+               //mScale(.05);
+               //mScale(scaling);
+               mTranslate(2*x-dim, -dim, 2*z - dim);
+               mScale(1, 1, 1);
+               //drawMesh(cubeMesh, [0,0,1]);
+               thisT = hitCheck(ray, cubeMesh, m[mTop]);
+               //console.log('this T:', thisT);
+               if (thisT > 0) {
+                  //console.log(thisT);
+                  tCount++;
+                  if (thisT > tempT) {
+                     tempT = thisT;
+                     rendPos = [2*x-dim, -dim-1, 2*z - dim];
+                     rendScale = [1,0.001,1];
+                     blkPosInMat = [x, 0, z];
+                  }
+               }
+            mRestore();
+         }
+      }
+      for (let y=0; y<dim; y++) {
+         for (let z=0; z<dim; z++) {
+            mSave();
+               //mScale(.05);
+               //mScale(scaling);
+               mTranslate(dim-2, 2*y-dim, 2*z - dim);
+               mScale(1, 1, 1);
+               //drawMesh(cubeMesh, [0,0,1]);
+               thisT = hitCheck(ray, cubeMesh, m[mTop]);
+               //console.log('this T:', thisT);
+               if (thisT > 0) {
+                  //console.log(thisT);
+                  tCount++;
+                  if (thisT > tempT) {
+                     tempT = thisT;
+                     rendPos = [dim-1, 2*y-dim, 2*z - dim];
+                     rendScale = [0.001, 1,1];
+                     blkPosInMat = [dim-1, y, z]
+                  }
+               }
+            mRestore();
+            mSave();
+               //mScale(.05);
+               //mScale(scaling);
+               mTranslate(-dim, 2*y-dim, 2*z - dim);
+               mScale(1, 1, 1);
+               //drawMesh(cubeMesh, [0,0,1]);
+               thisT = hitCheck(ray, cubeMesh, m[mTop]);
+               //console.log('this T:', thisT);
+               if (thisT > 0) {
+                  //console.log(thisT);
+                  tCount++;
+                  if (thisT > tempT) {
+                     tempT = thisT;
+                     rendPos = [-dim-1, 2*y-dim, 2*z - dim];
+                     rendScale = [0.001, 1,1];
+                     blkPosInMat = [0,y,z];
+                  }
+               }
+            mRestore();
+         }
+      }
+      if (tempT >= 0) {
+         //console.log('tCount:', tCount);
+         mSave();
+            //mScale(0.05);
+            //mScale(scaling);
+            mTranslate(rendPos);
+            mScale(rendScale[0],rendScale[1], rendScale[2]);
+            //console.log(rendScale);
+            if (tool === 'paint') drawMesh(cubeMesh, color, 'ignore');
+            else drawMesh(cubeMesh, color, 'ignore');
+            mouseInvisBlock = blkPosInMat;
+         mRestore();
+      }
+      else {
+         //TO-DO: stay at last viable invisBlock pos
+         //if (!isDown) mouseInvisBlock = [-1,-1,-1];
+      }
+   }
+   else {
+      mouseInvisBlock = [-1,-1,-1];
+   }
+   //console.log(hitIndex);
+   // if clicked on any of the existing blocks, do stuff
+   if (clickFrame) {
+      //console.log('hit index:', hitIndex);
+      clickFrame = false;
+
+      if (hitIndex >= 0) {
+         // check which side it hits, then spawn a block at desired position
+         let pos = drawArray[hitIndex].pos;
+         //console.log(pos);
+         //console.log(side);
+         if (tool === 'attach') {
+            let newPos = add(pos, side);
+            //console.log(newPos);
+            if (newPos[0] >= 0 && newPos[0] < dim && newPos[1] >= 0 && newPos[1] < dim && newPos[2] >= 0 && newPos[2] < dim) {
+               //blockMatrix[newPos[0]][newPos[1]][newPos[2]].exist = true; // actual change happen during release
+            }
+            clickPos = newPos;
+         }
+         else if (tool === 'remove' || 'paint') {
+            //blockMatrix[pos[0]][pos[1]][pos[2]].exist = false; // actual change happen during release
+            clickPos = pos;
+         }
+         if (tool === 'eyeDropper') {
+            color = drawArray[hitIndex].rgb;
+            brushColor.value = "#"+(255*color[0]).toString(16)+(255*color[1]).toString(16)+(255*color[2]).toString(16);
+         }
+         if (tool === 'move') {
+            if (drawArray[hitIndex].pos === 'moveX') {
+               moveDir = 'x';
+               moveMat = drawArray[hitIndex].matrix;
+            }
+            else if (drawArray[hitIndex].pos === 'moveXT') {
+               moveDir = 'xt';
+               moveMat = drawArray[hitIndex].matrix;
+            }
+            else if (drawArray[hitIndex].pos === 'moveY') {
+               moveDir = 'y';
+               moveMat = drawArray[hitIndex].matrix;
+            }
+            else if (drawArray[hitIndex].pos === 'moveYT') {
+               moveDir = 'yt';
+               moveMat = drawArray[hitIndex].matrix;
+            }
+            else if (drawArray[hitIndex].pos === 'moveZ') {
+               moveDir = 'z';
+               moveMat = drawArray[hitIndex].matrix;
+            }
+            else if (drawArray[hitIndex].pos === 'moveZT') {
+               moveDir = 'zt';
+               moveMat = drawArray[hitIndex].matrix;
+            }
+         }
+      }
+      else {
+         // if we are handling an invis block
+         if (tool === 'attach') {
+            if (mouseInvisBlock[0] >= 0) {
+               let newPos = mouseInvisBlock;
+               //console.log(newPos);
+               if (newPos[0] >= 0 && newPos[0] < dim && newPos[1] >= 0 && newPos[1] < dim && newPos[2] >= 0 && newPos[2] < dim) {
+                  //blockMatrix[newPos[0]][newPos[1]][newPos[2]].exist = true;
+               }
+               clickPos = newPos;
+            }
+         }
+         if (tool === 'remove' || tool === 'paint') {
+            //console.log('hello?');
+            clickPos = mouseInvisBlock;
+         }
+      }
+   }
+   // if holding mouse: not clickframe and isDown
+   else if (isDown){
+      let currPos = [];
+      if (hitIndex >= 0) {
+         currPos = drawArray[hitIndex].pos;
+      }
+      else {
+         currPos = mouseInvisBlock;
+      }
+
+      if (currPos[0] >= 0 && clickPos[0] >= 0) {
+         if (tool === 'attach') {
+            // draw all blocks in between starting pos and currPos by drawMesh, not exist=true
+            mIdentity();
+            mTranslate(transformation);
+            mRotateX(Math.PI * varyZ);
+            mRotateY(Math.PI * varyX);
+            mScale(.05);
+            mScale(scaling);
+            mScale(localScaling);
+            mTranslate(translation); // the movement in world space
+            for (let x=Math.max(Math.min(clickPos[0], currPos[0]), 0); x<=Math.min(Math.max(clickPos[0], currPos[0]), dim-1); x++) {
+               for (let y=Math.max(Math.min(clickPos[1], currPos[1]),0); y<=Math.min(Math.max(clickPos[1], currPos[1]), dim-1); y++) {
+                  for (let z=Math.max(Math.min(clickPos[2], currPos[2]),0); z<=Math.min(Math.max(clickPos[2], currPos[2]), dim-1); z++) {
+                     mSave();
+                        mTranslate([2*x-dim,2*y-dim,2*z-dim]);
+                        //drawMesh(cubeMesh, blockMatrix[x][y][z].color, 'ignore');
+                        if (!blockMatrix[x][y][z].exist) {
+                           drawMesh(cubeMesh, color, 'ignore');
+                        }
+                     mRestore();
+                  }
+               }
+            }
+         }
+         else if ((tool === 'remove' || tool === 'paint') && !releaseFrame) {
+            for (let x=Math.max(Math.min(clickPos[0], currPos[0]), 0); x<=Math.min(Math.max(clickPos[0], currPos[0]), dim-1); x++) {
+               for (let y=Math.max(Math.min(clickPos[1], currPos[1]),0); y<=Math.min(Math.max(clickPos[1], currPos[1]), dim-1); y++) {
+                  for (let z=Math.max(Math.min(clickPos[2], currPos[2]),0); z<=Math.min(Math.max(clickPos[2], currPos[2]), dim-1); z++) {
+                     // find the block from drawArray, and delete it
+                     let len = drawArray.length;
+                     for (let i=len-1; i>=0; i--) {
+                        //console.log(drawArray[i].pos);
+                        if (drawArray[i].pos[0] === x && drawArray[i].pos[1] === y && drawArray[i].pos[2] === z) {
+                           if (tool === 'remove') {
+                              drawArray.splice(i, 1);
+                              drawIndex--;
+                              //update the hitindex
+                              if (i === hitIndex) hitIndex = -1;
+                              if (i < hitIndex) hitIndex--;
+                           }
+                           else if (tool === 'paint') {
+                              drawArray[i].rgb = color;
+                           }
+                           //console.log(x,y,z);
+                        }
+                     }
+
+                  }
+               }
+            }
+         }
+      }
+   }
+   // if releasing mouse
+   if (releaseFrame) {
+      releaseFrame = false;
+
+      let currPos = [];
+      if (hitIndex >= 0) {
+         currPos = drawArray[hitIndex].pos;
+      }
+      else {
+         currPos = mouseInvisBlock;
+      }
+      //console.log(isDown, currPos);
+      if (currPos[0] >= 0 && clickPos[0] >= 0) {
+         if (tool === 'attach') {
+            // draw all blocks in between starting pos and currPos by drawMesh, not exist=true
+            for (let x=Math.max(Math.min(clickPos[0], currPos[0]), 0); x<=Math.min(Math.max(clickPos[0], currPos[0]), dim-1); x++) {
+               for (let y=Math.max(Math.min(clickPos[1], currPos[1]),0); y<=Math.min(Math.max(clickPos[1], currPos[1]), dim-1); y++) {
+                  for (let z=Math.max(Math.min(clickPos[2], currPos[2]),0); z<=Math.min(Math.max(clickPos[2], currPos[2]), dim-1); z++) {
+                     if (!blockMatrix[x][y][z].exist) {
+                        blockMatrix[x][y][z].color = color;
+                        blockMatrix[x][y][z].exist = true;
+                        if (history[historyPointer][x][y][z].exist === true) console.log('fuck');
+                     }
+                  }
+               }
+            }
+         }
+         else if (tool === 'remove' || tool === 'paint') {
+            for (let x=Math.max(Math.min(clickPos[0], currPos[0]), 0); x<=Math.min(Math.max(clickPos[0], currPos[0]), dim-1); x++) {
+               for (let y=Math.max(Math.min(clickPos[1], currPos[1]),0); y<=Math.min(Math.max(clickPos[1], currPos[1]), dim-1); y++) {
+                  for (let z=Math.max(Math.min(clickPos[2], currPos[2]),0); z<=Math.min(Math.max(clickPos[2], currPos[2]), dim-1); z++) {
+                     let len = drawArray.length;
+                     for (let i=len-1; i>=0; i--) {
+                        //console.log(drawArray[i].pos);
+                        if (drawArray[i].pos[0] === x && drawArray[i].pos[1] === y && drawArray[i].pos[2] === z) {
+                           if (tool === 'remove') {
+                              drawArray.splice(i, 1);
+                              drawIndex--;
+                              //update the hitindex
+                              if (i === hitIndex) hitIndex = -1;
+                              if (i < hitIndex) hitIndex--;
+                              blockMatrix[x][y][z].exist = false;
+                           }
+                           else if (tool === 'paint') {
+                              drawArray[i].rgb = color;
+                              blockMatrix[x][y][z].color = color;
+                           }
+                           //console.log(x,y,z);
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+
+      clickPos = [-1,-1,-1];
+      isDown = false;
+      mouseInvisBlock = [-1,-1,-1];
+      moveDir = '';
+      moveMat = [];
+
+      historyPointer++;
+      history = deleteBeyondPointer(history, historyPointer);
+      pushToHistory(history, blockMatrix);
+
+      objects[currentObjIndex].historyPointer = historyPointer;
+      objects[currentObjIndex].history = history;
+   }
+
+   objects[currentObjIndex].translation = translation;
+}
+
+
+let catmullRomMatrix = [ -.5,1,-.5,0, 1.5,-2.5,0,1, -1.5,2,.5,0, .5,-.5,0,0 ];
+
+let evalCatmullRomSpline = (t, K) => {
+   t = Math.max(0, Math.min(t, .9999));
+   let n = K.length - 1;
+   let i = Math.floor(n * t);
+   let f = (n * t) % 1.0;
+
+   let A = K[Math.max(0, i-1)];
+       B = K[i];
+       C = K[i+1];
+       D = K[Math.min(n, i+2)];
+
+   let c = matrixTransform(catmullRomMatrix, [A,B,C,D]);
+
+   return c[0] * f*f*f + c[1] * f*f + c[2] * f + c[3];
+}
+
+let latheMesh = createMesh(32, 32, uvToLathe,
+[
+   [-1,-.7,0,.7,1], // VARY Z AS A FUNCTION OF V
+   [0,.5,.1,.2,0]   // VARY R AS A FUNCTION OF V
+]);
+
+
+/////////////////////////////////////////////////
+//
+// SLIDERS CALLBACK FUNCTIONS
+
+function setToolBtnColor(id) {
+   document.getElementById('removeBtn').style.backgroundColor = "white";
+   document.getElementById('attachBtn').style.backgroundColor = "white";
+   document.getElementById('paintBtn').style.backgroundColor = "white";
+   document.getElementById('eyeDropperBtn').style.backgroundColor = "white";
+   document.getElementById('moveBtn').style.backgroundColor = "white";
+   document.getElementById(id).style.backgroundColor = "dimgrey";
+}
+
+function setLayerBtnColor(id) {
+   let layers = document.querySelector('.layers');
+   let children = layers.children;
+   for (let i=0; i<children.length; i++) {
+      children[i].children[2].style.backgroundColor = "white";
+   }
+   if (id) document.getElementById(id).style.backgroundColor = "dimgrey";
+}
+
+function uncheckAll() {
+   let layers = document.querySelector('.layers');
+   let children = layers.children;
+   for (let i=0; i<children.length; i++) {
+      children[i].children[0].checked = false;
+   }
+   document.getElementById('selectAllBtn').checked = false;
+}
+
+removeBtn.onclick = function() {
+   tool = 'remove';
+   setToolBtnColor("removeBtn");
+}
+
+attachBtn.onclick = function() {
+   tool = 'attach';
+   setToolBtnColor("attachBtn");
+}
+
+paintBtn.onclick = function() {
+   tool = 'paint';
+   setToolBtnColor("paintBtn");
+}
+
+resetBtn.onclick = function() {
+   varyX = 0;
+   varyZ = 0;
+   transformation = [.05,.05,.05];
+   scaling = 1;
+}
+
+eyeDropperBtn.onclick = function() {
+   tool = 'eyeDropper';
+   setToolBtnColor("eyeDropperBtn");
+}
+
+moveBtn.onclick = function() {
+   tool = 'move';
+   setToolBtnColor("moveBtn");
+}
+
+undoBtn.onclick = function() {
+   historyPointer = Math.max(0, historyPointer-1);
+   blockMatrix = deepCopy(history[historyPointer]);
+   objects[currentObjIndex].historyPointer = historyPointer;
+   objects[currentObjIndex].blockMatrix = blockMatrix;
+   //blockMatrix = history[historyPointer];
+   //temparr = history[historyPointer];
+}
+
+redoBtn.onclick = function() {
+   historyPointer = Math.min(history.length-1, historyPointer+1);
+   blockMatrix = deepCopy(history[historyPointer]);
+   objects[currentObjIndex].historyPointer = historyPointer;
+   objects[currentObjIndex].blockMatrix = blockMatrix;
+   //blockMatrix = history[historyPointer];
+}
+
+gridBtn.onclick = function() {
+   if (showGrid) {
+      showGrid = false;
+      gridBtn.style.backgroundColor = 'white';
+   }
+   else {
+      showGrid = true;
+      gridBtn.style.backgroundColor = 'dimgrey';
+   }
+}
+
+layer1.onclick = function() {
+   currentObjIndex = 0;
+   setLayerBtnColor("layer1");
+   document.querySelector('.layers').children[0].children[0].checked = true;
+   updateRenderOrder();
+}
+
+selectAllBtn.onclick = function() {
+   let val = selectAllBtn.checked;
+   let layers = document.querySelector('.layers');
+   let children = layers.children;
+   for (let i=0; i<children.length; i++) {
+      children[i].children[0].checked = val;
+   }
+   updateRenderOrder();
+}
+
+document.querySelector('.checkbox').onclick = function() {
+   updateRenderOrder();
+   selectAllBtn.checked = false;
+}
+
+addLayerBtn.onclick = function() {
+   let layers = document.querySelector('.layers');
+   let children = layers.children;
+   if (children.length >= 16) return;
+
+   //add new object
+   let dim = dimInput.value;
+   addNewObject(dim);
+   //update the current object index
+   let ind = objects.length-1;
+   currentObjIndex = ind;
+   uncheckAll();
+   //add a new button that links to this object
+   let div = document.createElement("li");
+
+   let cb = document.createElement("input");
+   cb.type = "checkbox";
+   cb.classList.add("checkbox");
+   cb.checked = true;
+   //cb.textContent = '&nbsp';
+   cb.onclick = () => {
+      updateRenderOrder();
+   }
+
+   let sp = document.createElement("span");
+   sp.textContent = '\u00a0';
+   sp.style.backgroundColor = 'grey';
+
+   let input = document.createElement("input");
+   //input.value = "LAYER "+(currentObjIndex+1);
+   input.value = document.getElementById("nameInput").value;
+   input.type = "button";
+   input.id = "layer"+(currentObjIndex+1);
+   input.onclick = () => {
+      currentObjIndex = ind;
+      setLayerBtnColor(input.id);
+      cb.checked = true;
+      updateRenderOrder();
+   }
+
+   div.appendChild(cb);
+   //div.innerHTML += '&nbsp;';
+   div.appendChild(sp);
+   div.appendChild(input);
+   document.querySelector('.layers').appendChild(div);
+   setLayerBtnColor(input.id);
+   updateRenderOrder();
+}
+
+duplicateBtn.onclick = function() {
+   let layers = document.querySelector('.layers');
+   let children = layers.children;
+   if (children.length >= 16) return;
+
+   let newObj = {
+      history: []
+   };
+   newObj.blockMatrix = deepCopy(objects[currentObjIndex].blockMatrix);
+   for (let i=0; i<objects[currentObjIndex].history.length; i++) {
+      newObj.history[i] = deepCopy(objects[currentObjIndex].history[i]);
+   }
+   newObj.historyPointer = objects[currentObjIndex].historyPointer;
+   newObj.translation = objects[currentObjIndex].translation.slice();
+   newObj.localScaling = objects[currentObjIndex].localScaling;
+   objects.push(newObj);
+
+   let ind = objects.length-1;
+   currentObjIndex = ind;
+   let div = document.createElement("li");
+
+   let cb = document.createElement("input");
+   cb.type = "checkbox";
+   cb.classList.add("checkbox");
+   cb.checked = true;
+   //cb.textContent = '&nbsp';
+   cb.onclick = () => {
+      updateRenderOrder();
+   }
+
+   let sp = document.createElement("span");
+   sp.textContent = '\u00a0';
+   sp.style.backgroundColor = 'grey';
+
+   let input = document.createElement("input");
+   //input.value = "LAYER "+(currentObjIndex+1);
+   input.value = document.getElementById("nameInput").value;
+   input.type = "button";
+   input.id = "layer"+(currentObjIndex+1);
+   input.onclick = () => {
+      currentObjIndex = ind;
+      setLayerBtnColor(input.id);
+      cb.checked = true;
+      updateRenderOrder();
+   }
+
+   div.appendChild(cb);
+   //div.innerHTML += '&nbsp;';
+   div.appendChild(sp);
+   div.appendChild(input);
+   document.querySelector('.layers').appendChild(div);
+   setLayerBtnColor(input.id);
+   updateRenderOrder();
+}
+
+brushColor.oninput = function() {
+   let hex = brushColor.value;
+   let r = parseInt('0x'+hex.substring(1,3), 16)/255;
+   let g = parseInt('0x'+hex.substring(3,5), 16)/255;
+   let b = parseInt('0x'+hex.substring(5,7), 16)/255;
+   color = [r,g,b];
+}
+
+let controlDown = false;
+document.body.addEventListener('keydown', (e) => {
+   //console.log(e.key);
+   //e.preventDefault();
+   if (e.key === ' ') {
+      e.preventDefault();
+      resetBtn.click();
+   }
+   else if (e.key === 'a') attachBtn.click();
+   else if (e.key === 'b') paintBtn.click();
+   else if (e.key === 'r') removeBtn.click();
+   else if (e.key === 'Tab') {
+      e.preventDefault();
+      gridBtn.click();
+   }
+   else if (e.key === 'e') eyeDropperBtn.click();
+   else if (e.key === 'm') moveBtn.click();
+
+   if (e.key === 'Control') controlDown = true;
+   else if (e.key === 'z' && controlDown) undoBtn.click(); 
+   else if (e.key === 'y' && controlDown) redoBtn.click();
+});
+
+document.body.addEventListener('keyup', (e) => {
+   if (e.key === 'Control') controlDown = false;
+});
+
+canvas1.addEventListener('wheel', (e) => {
+   e.preventDefault();
+   //console.log(e.deltaY);
+   if (!controlDown) {
+      if (e.deltaY > 0) {
+         scaling *= 0.8;
+         scaling = Math.max(0.2,scaling);
+      }
+      else if (e.deltaY < 0) {
+         scaling *= 1.25;
+         scaling = Math.min(5.0, scaling);
+      }
+   }
+   else {
+      // update the local scaling
+      let ls = objects[currentObjIndex].localScaling;
+      if (e.deltaY > 0) {
+         ls *= 0.8;
+         ls = Math.max(0.2,ls);
+      }
+      else if (e.deltaY < 0) {
+         ls *= 1.25;
+         ls = Math.min(5.0, ls);
+      }
+      objects[currentObjIndex].localScaling = ls;
+   }
+});
+
+/////////////////////////////////////////////////
+
+// sortable stuff
+Sortable.create(layers, {onUpdate: function(e) {
+   updateRenderOrder();
+}});
+
+// START EVERYTHING.
+
+gl_start(canvas1, vs, fs);
+</script>
+
